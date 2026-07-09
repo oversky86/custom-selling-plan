@@ -10,3 +10,4 @@ app/.DS_Store
 .shopify-sessions.json
 app/.shopify-sessions.json
 .shopify
+.vercel
