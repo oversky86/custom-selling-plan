@@ -1,0 +1,12 @@
+node_modules
+build
+.react-router
+.DS_Store
+app/.DS_Store
+.vite
+.env
+.env.local
+.prisma
+.shopify-sessions.json
+app/.shopify-sessions.json
+.shopify
