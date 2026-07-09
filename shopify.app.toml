@@ -3,7 +3,7 @@ client_id = "5582d70593673cec7451f29ef451590c"
 name = "custom-selling-plan"
 handle = "custom-selling-plan"
 
-application_url = "https://pills-next-houston-raise.trycloudflare.com"
+application_url = "https://custom-selling-plan.vercel.app"
 
 embedded = true
 
@@ -15,7 +15,7 @@ scopes = "write_products,write_purchase_options,read_orders,write_orders,write_p
 
 [auth]
 redirect_urls = [
-  "https://pills-next-houston-raise.trycloudflare.com/api/auth"
+  "https://custom-selling-plan.vercel.app/api/auth"
 ]
 
 [webhooks]
