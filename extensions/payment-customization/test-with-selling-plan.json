@@ -1,0 +1,23 @@
+{
+  "cart": {
+    "lines": [
+      {
+        "sellingPlanAllocation": {
+          "sellingPlan": {
+            "name": "Deposit Purchase"
+          }
+        }
+      }
+    ]
+  },
+  "paymentMethods": [
+    { "id": "pm_card_1", "name": "Credit Card" },
+    { "id": "pm_card_2", "name": "Shopify Payments Card" },
+    { "id": "pm_shop_pay", "name": "Shop Pay" },
+    { "id": "pm_apple_pay", "name": "Apple Pay" },
+    { "id": "pm_google_pay", "name": "Google Pay" },
+    { "id": "pm_paypal", "name": "PayPal" },
+    { "id": "pm_cod", "name": "Cash on Delivery (COD)" },
+    { "id": "pm_bank", "name": "Bank Deposit" }
+  ]
+}

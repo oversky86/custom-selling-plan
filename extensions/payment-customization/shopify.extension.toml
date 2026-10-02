@@ -1,0 +1,21 @@
+api_version = "2026-04"
+
+[[extensions]]
+name = "Deposit Payment Method Filter"
+handle = "payment-customization"
+uid = "4f8a281d-8599-ed4f-dd32-1297c2872b96939fbf00"
+type = "function"
+description = "Hides non-vault payment methods when cart contains deferred/deposit payment plans"
+
+  [[extensions.targeting]]
+  target = "cart.payment-methods.transform.run"
+  input_query = "src/index.graphql"
+  export = "cart-payment-methods-transform-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"

@@ -11,7 +11,7 @@ embedded = true
 automatically_update_urls_on_dev = true
 
 [access_scopes]
-scopes = "write_products,write_purchase_options,read_orders,write_orders,write_payment_mandate,read_payment_mandate,read_payment_terms"
+scopes = "write_products,write_purchase_options,read_orders,write_orders,write_payment_mandate,read_payment_mandate,read_payment_terms,write_payment_customizations"
 
 [auth]
 redirect_urls = [
