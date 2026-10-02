@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
+
+const CREATE_CONFIRM_MODAL_ID = "create-plan-modal";
+const DELETE_CONFIRM_MODAL_ID = "delete-plan-modal";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -19,6 +23,9 @@ export default function Index() {
   const [depositPct, setDepositPct] = useState("20");
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [planName, setPlanName] = useState("Deposit Purchase");
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  const createLockedRef = useRef(false);
+  const deleteLockedRef = useRef(false);
 
   // Load existing selling plan groups and products on mount
   useEffect(() => {
@@ -64,6 +71,8 @@ export default function Index() {
     }
   }, [actionFetcher.data, shopify]);
 
+  const isCreating = actionFetcher.state === "submitting";
+
   const handleCreate = () => {
     actionFetcher.submit(
       {
@@ -76,11 +85,46 @@ export default function Index() {
     );
   };
 
+  const openCreateConfirm = () => {
+    if (isCreating || createLockedRef.current) return;
+    shopify.modal.show(CREATE_CONFIRM_MODAL_ID);
+  };
+
+  const confirmCreate = () => {
+    if (isCreating || createLockedRef.current) return;
+    createLockedRef.current = true;
+    shopify.modal.hide(CREATE_CONFIRM_MODAL_ID);
+    handleCreate();
+  };
+
+  useEffect(() => {
+    if (actionFetcher.state === "idle") {
+      createLockedRef.current = false;
+      deleteLockedRef.current = false;
+    }
+  }, [actionFetcher.state]);
+
   const handleDelete = (groupId: string) => {
     actionFetcher.submit(
       { action: "delete", sellingPlanGroupId: groupId },
       { method: "POST", action: "/api/selling-plans", encType: "application/json" }
     );
+  };
+
+  const openDeleteConfirm = (groupId: string, groupName: string) => {
+    if (isCreating || deleteLockedRef.current) return;
+    flushSync(() => {
+      setPendingDelete({ id: groupId, name: groupName });
+    });
+    shopify.modal.show(DELETE_CONFIRM_MODAL_ID);
+  };
+
+  const confirmDelete = () => {
+    if (isCreating || deleteLockedRef.current || !pendingDelete) return;
+    deleteLockedRef.current = true;
+    const groupId = pendingDelete.id;
+    shopify.modal.hide(DELETE_CONFIRM_MODAL_ID);
+    handleDelete(groupId);
   };
 
   const toggleProduct = (productId: string) => {
@@ -91,7 +135,6 @@ export default function Index() {
 
   const groups = groupsFetcher.data?.sellingPlanGroups || [];
   const products = productsFetcher.data?.products || [];
-  const isCreating = actionFetcher.state === "submitting";
 
   return (
     <s-page heading="Selling Plan Manager">
@@ -153,13 +196,59 @@ export default function Index() {
           )}
 
           <s-button
-            onClick={handleCreate}
+            type="button"
+            onClick={openCreateConfirm}
             {...(isCreating ? { loading: true } : {})}
           >
             Create Plan ({depositPct}% deposit, {100 - parseInt(depositPct)}% on shipment)
           </s-button>
         </s-stack>
       </s-section>
+
+      <s-modal id={CREATE_CONFIRM_MODAL_ID} heading="Create plan?" size="small-100">
+        <s-paragraph>This will update the store configuration.</s-paragraph>
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          onClick={confirmCreate}
+          {...(isCreating ? { loading: true } : {})}
+        >
+          Create Plan
+        </s-button>
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor={CREATE_CONFIRM_MODAL_ID}
+          command="--hide"
+        >
+          Cancel
+        </s-button>
+      </s-modal>
+
+      <s-modal id={DELETE_CONFIRM_MODAL_ID} heading="Delete plan?" size="small-100">
+        <s-paragraph>
+          {pendingDelete?.name
+            ? `This will remove "${pendingDelete.name}" from the store.`
+            : "This will remove the plan from the store."}
+        </s-paragraph>
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          tone="critical"
+          onClick={confirmDelete}
+          {...(isCreating ? { loading: true } : {})}
+        >
+          Delete
+        </s-button>
+        <s-button
+          slot="secondary-actions"
+          variant="secondary"
+          commandFor={DELETE_CONFIRM_MODAL_ID}
+          command="--hide"
+        >
+          Cancel
+        </s-button>
+      </s-modal>
 
       {/* Existing Plans */}
       <s-section heading="Existing Selling Plans">
@@ -193,7 +282,7 @@ export default function Index() {
                   )}
 
                   <s-button
-                    onClick={() => handleDelete(group.id)}
+                    onClick={() => openDeleteConfirm(group.id, group.name ?? "")}
                     variant="tertiary"
                   >
                     Delete
