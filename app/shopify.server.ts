@@ -7,6 +7,7 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import { FileSessionStorage } from "./file-session-storage";
 import prisma from "./db.server";
+import { ScopedSessionStorage } from "./scoped-session-storage.server";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -17,9 +18,12 @@ const shopify = shopifyApp({
   scopes: process.env.SCOPES?.split(","),
   appUrl: process.env.SHOPIFY_APP_URL || "",
   authPathPrefix: "/auth",
-  sessionStorage: isDev
-    ? new FileSessionStorage("app/.shopify-sessions.json")
-    : new PrismaSessionStorage(prisma),
+  sessionStorage: new ScopedSessionStorage(
+    isDev
+      ? new FileSessionStorage("app/.shopify-sessions.json")
+      : new PrismaSessionStorage(prisma),
+    process.env.SHOPIFY_API_KEY || "selling-plan",
+  ),
   distribution: AppDistribution.AppStore,
   future: {
     expiringOfflineAccessTokens: true,
