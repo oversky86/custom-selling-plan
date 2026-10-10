@@ -13,6 +13,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   console.log(`[orders/fulfilled] Order ${orderId} fulfilled, checking for deferred payment...`);
 
+  if (!admin) {
+    console.error("[orders/fulfilled] No admin session");
+    return new Response("No admin session", { status: 500 });
+  }
+
   try {
     // Step 1: Query order for payment mandates and payment schedule
     const orderRes = await admin.graphql(

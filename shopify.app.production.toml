@@ -1,0 +1,33 @@
+# custom-selling-plan-prod — 线上店 6hcr01-9t.myshopify.com
+# 与 custom-selling-plan 共用同一 Vercel 后端
+
+client_id = "4461215dd99f906f4b139604cd88eebb"
+name = "custom-selling-plan-prod"
+application_url = "https://custom-selling-plan.vercel.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = false
+
+[access_scopes]
+scopes = "write_products,write_purchase_options,read_orders,write_orders,write_payment_mandate,read_payment_mandate,read_payment_terms,write_payment_customizations"
+
+[auth]
+redirect_urls = [
+  "https://custom-selling-plan.vercel.app/api/auth"
+]
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/fulfilled" ]
+  uri = "/webhooks/orders/fulfilled"
