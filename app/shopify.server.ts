@@ -130,10 +130,11 @@ function appsForRequest(request: Request): { apps: Shopify[]; certain: boolean }
 }
 
 async function replay(request: Request): Promise<() => Request> {
-  const body =
-    request.method === "GET" || request.method === "HEAD"
-      ? undefined
-      : await request.arrayBuffer();
+  if (request.method === "GET" || request.method === "HEAD") {
+    return () => request;
+  }
+  // Clone first. Route actions still need the original body after auth.
+  const body = await request.clone().arrayBuffer();
   return () =>
     new Request(request.url, {
       method: request.method,
