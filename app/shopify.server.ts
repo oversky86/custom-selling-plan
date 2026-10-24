@@ -17,12 +17,14 @@ const LIVE_API_KEY =
   process.env.SHOPIFY_API_KEY_LIVE || "4461215dd99f906f4b139604cd88eebb";
 const LIVE_API_SECRET = process.env.SHOPIFY_API_SECRET_LIVE || "";
 
+const LIVE_SHOP = "6hcr01-9t.myshopify.com";
 const LIVE_HOSTS = new Set([
-  "6hcr01-9t.myshopify.com",
+  LIVE_SHOP,
   "view-brush.myshopify.com",
   "viewbrush.com",
   "www.viewbrush.com",
 ]);
+const LIVE_SESSION_SHOPS = [LIVE_SHOP, "view-brush.myshopify.com"];
 
 function normalizeHost(input: string): string {
   return input
@@ -197,6 +199,26 @@ async function loginFor(request: Request) {
   return app.login(request);
 }
 
+async function adminForShop(shop: string) {
+  const host = isLiveShop(shop) ? LIVE_SHOP : normalizeHost(shop);
+  const app = isLiveShop(host) && liveShopify ? liveShopify : devShopify;
+  if (isLiveShop(host) && !liveShopify) {
+    console.error("[shopify] SHOPIFY_API_SECRET_LIVE is not set");
+  }
+  const candidates = isLiveShop(host)
+    ? [host, ...LIVE_SESSION_SHOPS.filter((item) => item !== host)]
+    : [host];
+  let last: unknown;
+  for (const candidate of candidates) {
+    try {
+      return await app.unauthenticated.admin(candidate);
+    } catch (err) {
+      last = err;
+    }
+  }
+  throw last;
+}
+
 const shopify = devShopify;
 
 export default shopify;
@@ -206,7 +228,9 @@ export const authenticate = {
   admin: authenticateAdmin,
   webhook: authenticateWebhook,
 };
-export const unauthenticated = shopify.unauthenticated;
+export const unauthenticated = {
+  admin: adminForShop,
+};
 export const login = loginFor;
 export const registerWebhooks = shopify.registerWebhooks;
 export const sessionStorage = shopify.sessionStorage;

@@ -79,7 +79,7 @@ async function handleCreate(admin: any, body: any) {
           options: [`${depositPercentage}% Deposit`],
           sellingPlansToCreate: [
             {
-              name: `Pay ${depositPercentage}% Now, ${100 - depositPercentage}% on Shipment`,
+              name: `Pay ${depositPercentage}% now, ${100 - depositPercentage}% when you approve the portrait`,
               options: `${depositPercentage}% Deposit`,
               category: "PRE_ORDER",
               billingPolicy: {
