@@ -5,20 +5,16 @@ type AdminGraphql = {
   ) => Promise<Response>;
 };
 
-type PaymentSchedule = {
-  id: string;
-  completedAt?: string | null;
-  totalBalance?: { amount?: string | null; currencyCode?: string | null } | null;
-};
-
 export type ChargeBalanceResult =
-  | { ok: true; charged: boolean; reason?: "no_mandate" | "already_paid" | "no_balance" }
+  | { ok: true; charged: boolean; reason?: "no_mandate" | "already_paid" }
   | { ok: false; error: string };
 
 /**
  * Captures the unpaid deferred balance on a deposit order.
- * The same order + schedule idempotency key is shared by the approval call and
- * the fulfillment fallback, so a second call does not create another payment.
+ * A due-on-fulfillment schedule can already look completed while the order
+ * still has an outstanding balance, so the order total is the signal.
+ * The same order idempotency key is shared by approval and the fulfillment
+ * fallback, so a second call does not create another payment.
  */
 export async function chargeRemainingBalance(
   admin: AdminGraphql,
@@ -31,19 +27,9 @@ export async function chargeRemainingBalance(
       order(id: $id) {
         id
         name
+        totalOutstandingSet { shopMoney { amount currencyCode } }
         paymentCollectionDetails {
           vaultedPaymentMethods { id }
-        }
-        paymentTerms {
-          paymentSchedules(first: 10) {
-            edges {
-              node {
-                id
-                completedAt
-                totalBalance { amount currencyCode }
-              }
-            }
-          }
         }
       }
     }`,
@@ -64,26 +50,16 @@ export async function chargeRemainingBalance(
     return { ok: true, charged: false, reason: "no_mandate" };
   }
 
-  const schedules: PaymentSchedule[] =
-    order.paymentTerms?.paymentSchedules?.edges?.map(
-      (edge: { node: PaymentSchedule }) => edge.node,
-    ) ?? [];
-  const pending = schedules.find((schedule) => !schedule.completedAt);
-  if (!pending) {
+  const outstanding = order.totalOutstandingSet?.shopMoney;
+  const remainingAmount = outstanding?.amount as string | undefined;
+  const currencyCode = outstanding?.currencyCode as string | undefined;
+  if (!remainingAmount || Number.parseFloat(remainingAmount) <= 0) {
     console.log(`[${source}] ${order.name} has no unpaid balance.`);
     return { ok: true, charged: false, reason: "already_paid" };
   }
 
-  const remainingAmount = pending.totalBalance?.amount;
-  const currencyCode = pending.totalBalance?.currencyCode;
-  if (!remainingAmount || Number.parseFloat(remainingAmount) <= 0) {
-    console.log(`[${source}] ${order.name} remaining balance is empty.`);
-    return { ok: true, charged: false, reason: "no_balance" };
-  }
-
   const orderNum = orderId.split("/").pop() || orderId;
-  const scheduleNum = pending.id.split("/").pop() || pending.id;
-  const idempotencyKey = `${orderNum}-${scheduleNum}`.slice(0, 32);
+  const idempotencyKey = `${orderNum}-balance`.slice(0, 32);
 
   console.log(
     `[${source}] charging ${remainingAmount} ${currencyCode} on ${order.name}`,
@@ -95,13 +71,11 @@ export async function chargeRemainingBalance(
       $id: ID!
       $mandateId: ID!
       $idempotencyKey: String!
-      $paymentScheduleId: ID
     ) {
       orderCreateMandatePayment(
         id: $id
         mandateId: $mandateId
         idempotencyKey: $idempotencyKey
-        paymentScheduleId: $paymentScheduleId
         autoCapture: true
       ) {
         paymentReferenceId
@@ -113,7 +87,6 @@ export async function chargeRemainingBalance(
         id: orderId,
         mandateId,
         idempotencyKey,
-        paymentScheduleId: pending.id,
       },
     },
   );
